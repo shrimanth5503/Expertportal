@@ -1,0 +1,6 @@
+{
+  "name": "Registration & Login Portal",
+  "description": "Secure user registration and authentication system with encrypted passwords, domain expertise, skills inventory, and Supabase integration.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
