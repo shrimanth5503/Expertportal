@@ -12,7 +12,7 @@ const JWT_SECRET = process.env.JWT_SECRET || 'secure_development_jwt_secret_key_
 const BCRYPT_SALT_ROUNDS = 10;
 
 // PostgreSQL / Supabase Schema definition for reference & 1-click execution
-const SUPABASE_SCHEMA_SQL = `-- Run this in your Supabase SQL Editor to create the users table:
+export const SUPABASE_SCHEMA_SQL = `-- Run this in your Supabase SQL Editor to create the users table:
 CREATE TABLE IF NOT EXISTS public.users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   name TEXT NOT NULL,
@@ -35,7 +35,7 @@ CREATE POLICY "Allow public insert and read" ON public.users
 `;
 
 // In-memory fallback database for sandbox mode or when Supabase keys are not set
-const memoryDatabase: Map<string, StoredUser> = new Map();
+export const memoryDatabase: Map<string, StoredUser> = new Map();
 
 // Seed initial sample user in sandbox so login is immediately testable
 const initialPasswordHash = bcrypt.hashSync('DemoSecure123!', BCRYPT_SALT_ROUNDS);
@@ -56,7 +56,7 @@ memoryDatabase.set(demoUser.email.toLowerCase(), demoUser);
 // Lazy Supabase client resolver
 let supabaseClient: SupabaseClient | null = null;
 
-function getSupabaseClient(): SupabaseClient | null {
+export function getSupabaseClient(): SupabaseClient | null {
   const supabaseUrl = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
   const supabaseKey =
     process.env.SUPABASE_SERVICE_ROLE_KEY ||
@@ -86,7 +86,7 @@ function getSupabaseClient(): SupabaseClient | null {
 }
 
 // Extract project reference from URL to construct direct dashboard link
-function getSupabaseSqlEditorUrl(url: string | null | undefined): string {
+export function getSupabaseSqlEditorUrl(url: string | null | undefined): string {
   if (!url) return 'https://supabase.com/dashboard';
   try {
     const match = url.match(/https:\/\/([a-z0-9-]+)\.supabase\.co/i);
@@ -100,7 +100,7 @@ function getSupabaseSqlEditorUrl(url: string | null | undefined): string {
 }
 
 // Check if direct PostgreSQL connection string is configured
-function getDirectPgConnectionString(): string | null {
+export function getDirectPgConnectionString(): string | null {
   return (
     process.env.DATABASE_URL ||
     process.env.POSTGRES_URL ||
@@ -111,7 +111,7 @@ function getDirectPgConnectionString(): string | null {
 }
 
 // Check if Supabase connection & table are accessible
-async function testSupabaseConnection(): Promise<{ connected: boolean; tableExists: boolean; message: string }> {
+export async function testSupabaseConnection(): Promise<{ connected: boolean; tableExists: boolean; message: string }> {
   const client = getSupabaseClient();
   const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
 
@@ -162,7 +162,7 @@ async function testSupabaseConnection(): Promise<{ connected: boolean; tableExis
 }
 
 // Generate JWT token
-function generateToken(user: UserProfile): string {
+export function generateToken(user: UserProfile): string {
   return jwt.sign(
     {
       id: user.id,
@@ -175,7 +175,7 @@ function generateToken(user: UserProfile): string {
 }
 
 // Verify JWT token middleware
-function authenticateToken(req: Request, res: Response, next: () => void) {
+export function authenticateToken(req: Request, res: Response, next: () => void) {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
 
@@ -194,14 +194,15 @@ function authenticateToken(req: Request, res: Response, next: () => void) {
   });
 }
 
-async function startServer() {
+// Create configured Express Application
+export function createExpressApp() {
   const app = express();
 
   app.use(express.json());
 
   // Health check endpoint
   app.get('/api/health', (req: Request, res: Response) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({ status: 'ok', timestamp: new Date().toISOString(), vercel: Boolean(process.env.VERCEL) });
   });
 
   // Database Status & Diagnostics endpoint
@@ -751,7 +752,14 @@ async function startServer() {
     }
   });
 
-  // Vite middleware for development
+  return app;
+}
+
+const app = createExpressApp();
+export default app;
+
+// Standalone Server Starter (Local development, Docker, Cloud Run)
+export async function startServer() {
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },
@@ -771,4 +779,7 @@ async function startServer() {
   });
 }
 
-startServer();
+// Only start the HTTP listener if executed directly (not when imported as a serverless function by Vercel)
+if (!process.env.VERCEL && process.env.NODE_ENV !== 'test') {
+  startServer();
+}

@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Users, X, Mail, Search, RefreshCw } from 'lucide-react';
 import { UserProfile } from '../types.ts';
 import { getSeniorityLevel } from '../data/domains.ts';
+import { safeFetchJson } from '../lib/api.ts';
 
 interface AllUsersModalProps {
   isOpen: boolean;
@@ -16,10 +17,9 @@ export const AllUsersModal: React.FC<AllUsersModalProps> = ({ isOpen, onClose })
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const res = await fetch('/api/users/all');
-      const data = await res.json();
-      if (data.success && Array.isArray(data.users)) {
-        setUsers(data.users);
+      const result = await safeFetchJson<{ success: boolean; users?: UserProfile[] }>('/api/users/all');
+      if (result.ok && result.data?.success && Array.isArray(result.data.users)) {
+        setUsers(result.data.users);
       }
     } catch (err) {
       console.error('Error fetching users:', err);

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Mail, Lock, Eye, EyeOff, AlertCircle, ShieldCheck, ArrowRight, Sparkles } from 'lucide-react';
 import { LoginPayload, AuthResponse } from '../types.ts';
+import { safeFetchJson } from '../lib/api.ts';
 
 interface LoginFormProps {
   onLoginSuccess: (response: AuthResponse) => void;
@@ -44,7 +45,7 @@ export const LoginForm: React.FC<LoginFormProps> = ({
     };
 
     try {
-      const res = await fetch('/api/auth/login', {
+      const result = await safeFetchJson<AuthResponse>('/api/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -52,13 +53,11 @@ export const LoginForm: React.FC<LoginFormProps> = ({
         body: JSON.stringify(payload),
       });
 
-      const data: AuthResponse = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Login failed. Please verify credentials.');
+      if (!result.ok || !result.data?.success) {
+        throw new Error(result.data?.message || result.errorText || 'Login failed. Please verify credentials.');
       }
 
-      onLoginSuccess(data);
+      onLoginSuccess(result.data);
     } catch (err: any) {
       setErrorMsg(err.message || 'Unable to authenticate.');
     } finally {

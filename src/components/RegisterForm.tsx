@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { DOMAIN_OPTIONS, getSeniorityLevel } from '../data/domains.ts';
 import { RegisterPayload, AuthResponse } from '../types.ts';
+import { safeFetchJson } from '../lib/api.ts';
 
 interface RegisterFormProps {
   onRegisterSuccess: (response: AuthResponse) => void;
@@ -180,7 +181,7 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
     };
 
     try {
-      const res = await fetch('/api/auth/register', {
+      const result = await safeFetchJson<AuthResponse>('/api/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -188,13 +189,11 @@ export const RegisterForm: React.FC<RegisterFormProps> = ({
         body: JSON.stringify(payload),
       });
 
-      const data: AuthResponse = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Registration failed.');
+      if (!result.ok || !result.data?.success) {
+        throw new Error(result.data?.message || result.errorText || 'Registration failed.');
       }
 
-      onRegisterSuccess(data);
+      onRegisterSuccess(result.data);
     } catch (err: any) {
       setErrorMsg(err.message || 'Error occurred during registration.');
     } finally {

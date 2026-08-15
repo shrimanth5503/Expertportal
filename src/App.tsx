@@ -6,6 +6,7 @@ import { UserProfileView } from './components/UserProfile.tsx';
 import { SupabaseModal } from './components/SupabaseModal.tsx';
 import { AllUsersModal } from './components/AllUsersModal.tsx';
 import { UserProfile, AuthResponse, DbStatusResponse } from './types.ts';
+import { safeFetchJson } from './lib/api.ts';
 import { ShieldCheck, Database, Lock, AlertTriangle, ArrowRight, Check } from 'lucide-react';
 
 export default function App() {
@@ -21,11 +22,14 @@ export default function App() {
   // Fetch Database Status
   const fetchDbStatus = async () => {
     try {
-      const res = await fetch('/api/db/status');
-      const data: DbStatusResponse = await res.json();
-      setDbStatus(data);
-      if (data.activeStore) {
-        setStorageType(data.activeStore);
+      const result = await safeFetchJson<DbStatusResponse>('/api/db/status');
+      if (result.ok && result.data) {
+        setDbStatus(result.data);
+        if (result.data.activeStore) {
+          setStorageType(result.data.activeStore);
+        }
+      } else {
+        console.warn('DB status notice:', result.errorText);
       }
     } catch (err) {
       console.warn('Could not fetch DB status:', err);
@@ -41,17 +45,19 @@ export default function App() {
     }
 
     try {
-      const res = await fetch('/api/auth/me', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const result = await safeFetchJson<{ success: boolean; user?: UserProfile; storageType?: 'supabase' | 'sandbox' }>(
+        '/api/auth/me',
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
-      const data = await res.json();
-      if (res.ok && data.success && data.user) {
-        setCurrentUser(data.user);
-        if (data.storageType) {
-          setStorageType(data.storageType);
+      if (result.ok && result.data?.success && result.data.user) {
+        setCurrentUser(result.data.user);
+        if (result.data.storageType) {
+          setStorageType(result.data.storageType);
         }
       } else {
         localStorage.removeItem('auth_token');

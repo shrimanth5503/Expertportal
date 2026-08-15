@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { UserProfile as UserProfileType, DbStatusResponse } from '../types.ts';
 import { DOMAIN_OPTIONS, getSeniorityLevel } from '../data/domains.ts';
+import { safeFetchJson } from '../lib/api.ts';
 
 interface UserProfileProps {
   user: UserProfileType;
@@ -67,27 +68,29 @@ export const UserProfileView: React.FC<UserProfileProps> = ({
 
     try {
       const token = localStorage.getItem('auth_token');
-      const res = await fetch('/api/auth/profile', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          name: editName,
-          domain_expertise: editDomain,
-          skills: editSkills,
-          years_of_experience: editYears,
-          bio: editBio,
-        }),
-      });
+      const result = await safeFetchJson<{ success: boolean; user?: UserProfileType; message?: string }>(
+        '/api/auth/profile',
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            name: editName,
+            domain_expertise: editDomain,
+            skills: editSkills,
+            years_of_experience: editYears,
+            bio: editBio,
+          }),
+        }
+      );
 
-      const data = await res.json();
-      if (!res.ok || !data.success) {
-        throw new Error(data.message || 'Failed to update profile.');
+      if (!result.ok || !result.data?.success || !result.data.user) {
+        throw new Error(result.data?.message || result.errorText || 'Failed to update profile.');
       }
 
-      onUpdateUser(data.user);
+      onUpdateUser(result.data.user);
       setIsEditing(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);

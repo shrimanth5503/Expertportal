@@ -13,6 +13,7 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { DbStatusResponse } from '../types.ts';
+import { safeFetchJson } from '../lib/api.ts';
 
 interface SupabaseModalProps {
   isOpen: boolean;
@@ -45,12 +46,21 @@ export const SupabaseModal: React.FC<SupabaseModalProps> = ({
     setIsVerifying(true);
     setVerifyResult(null);
     try {
-      const res = await fetch('/api/db/init-table', { method: 'POST' });
-      const data = await res.json();
-      setVerifyResult({
-        success: Boolean(data.tableExists || data.success),
-        message: data.message || (data.tableExists ? 'Table verified!' : 'Table not found yet.'),
-      });
+      const result = await safeFetchJson<{ success: boolean; tableExists?: boolean; message?: string }>(
+        '/api/db/init-table',
+        { method: 'POST' }
+      );
+      if (result.ok && result.data) {
+        setVerifyResult({
+          success: Boolean(result.data.tableExists || result.data.success),
+          message: result.data.message || (result.data.tableExists ? 'Table verified!' : 'Table not found yet.'),
+        });
+      } else {
+        setVerifyResult({
+          success: false,
+          message: result.errorText || 'Verification request failed.',
+        });
+      }
       onRefresh();
     } catch (err: any) {
       setVerifyResult({
